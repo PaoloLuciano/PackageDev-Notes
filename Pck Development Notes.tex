@@ -1,0 +1,219 @@
+\documentclass[pdftex,11pt,a4paper]{article}
+
+%Paquetes importantes
+\usepackage[left=2.5cm,top=2.5cm,right=2.5cm,bottom=2.5cm]{geometry} %Formato
+%\usepackage[spanish]{babel} %Para escribir en español
+%\decimalpoint
+\usepackage[utf8]{inputenc} %Acentos y demás
+\usepackage{amsmath} %Simbolos y cosas bonitas
+\usepackage{amsfonts} %Simbolos y cosas bonitas
+\usepackage{array} %Tablas bonitas
+\usepackage{listings} % Insertar Código
+\usepackage[pdftex]{graphicx} % Imagenes
+\usepackage{hyperref} %Hipervinculos
+\usepackage{pdflscape} %Poner algunas páginas en Horizontal \begin{landscape}
+\usepackage{multicol}  % Latex a Dos Columnas
+\usepackage{float} % Poner mejor las imágenes.
+\usepackage{caption}
+\usepackage{subcaption}
+
+\setlength\parindent{0pt} % Quitar las sangías
+% \setlength{\intextsep}{1pt plus 1pt minus 1pt} % Pámetro de texto entre figura e imágen.
+
+\title{Package Development Notes}
+\author{Paolo Luciano Rivera}
+\date{2018}
+
+\newcommand{\R}{\texttt{R} }
+
+\begin{document}
+\maketitle
+
+\section*{Introduction}
+Developing a Package in \R might seem like an impossible task or one that requires significant amount of coding experience. You'd be right. However, thanks to the people behind \href{https://www.rstudio.com/}{RStudio}, specially our lord and savior \textit{Sir. Hadley Wickham The Ultimate Hipster} this process has become significantly easier and can be done with minimal obscure \R coding. 
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=.75\textwidth]{HW.jpg}
+\end{figure}
+
+This book will mainly reference (copy tbh) his work on the book \href{http://r-pkgs.had.co.nz}{R Packages}. Where he goes into a way deeper explanation on every aspect of Package Development. This notes, provide a high level explanation on how to build a package from scratch. The way it has been designed on RStudio, really simplifies most technical aspects and allows the user to focus on what's important, the actual \R code and testing it. 
+
+\subsubsection*{Why develop a package?}
+Because coding a package makes your life way easier than just scripting. The main idea of developing an \R package is not to build a ready to use product, it's more along the lines of a \textit{framework} that will help every data scientist seamlessly integrate and test his or her code. Because we are lazy, most common task have been automated and because we're stupid documenting everything for your future self has been made easy. This way of coding might be a little over-the-top for some people that usually wants a quick answer, however, when you review your work several months in advance and you actually understand what's that vectorized auxiliary function is doing, it'll definitely pay off. Besides, a package is the ``fundamental unit of shareable code'' and it will make your life easier when you're trying to do something a bit more complex than doing a simple scatter plot.\\
+
+To summarize, why develop a a package in \R with RStudio?
+\begin{itemize}
+	\item Because, it provides a framework for organizing and structuring code
+	\item Because, it is the \textit{basic unit of shareable code}
+	\item Because it automates a lot of trivial things like: documenting the package, building top level files and auto-testing for bugs.
+	\item Because version control is made simple
+	\item Because it protects you from low-level coding mistakes and makes sure the package works
+	\item Because \verb|devtools| is one of the \R packages out there
+\end{itemize}
+
+As you continue to work and develop packages, you'd might want to understand how these low-level details work. The best and most complete resource for it, is the official, but less friendly \href{https://cran.r-project.org/doc/manuals/R-exts.html#Creating-R-packages}{Writing R Extensions} located in CRAN.
+
+\section*{Getting started}
+\subsection*{What do you need?}
+\begin{itemize}
+	\item \R
+	\item RStudio
+	\item A couple of packages: 
+
+\begin{verbatim}
+install.packages(c("devtools", "roxygen2", "testthat", "knitr"))
+\end{verbatim}
+
+	\item Low level development tools: RTools in windows, XCode on Mac and \verb|r-base-dev|.
+\end{itemize}
+
+Now test that everything works by running
+
+\begin{verbatim}
+	library(devtools)
+	has_devel() == TRUE
+\end{verbatim}
+
+If it returns TRUE, you should be ready to go do some hardcore coding. 
+
+\subsection*{Let's now build a package}
+\begin{enumerate}	
+	\item Open RStudio and click on \textit{New Project}. 
+	\item Name your package (hardest decision ever) and select where will it live. Tip: do it simple and don't use fancy characters.
+	\item ???
+	\item profit
+\end{enumerate}
+
+Let's change some options for further documentation just not to break anything (we will review all of this later)) and \textit{voilà}, you have a working package\footnote{If you want to feel a bit more hackery you can go: \texttt{devtools::create("path/to/package/pkgname")}}. For real. Test that by changing the first function and pressing \verb|Crtl+Shift+B| this is the shortcut to \textit{build the package} (we will cover that later) and run the function \verb|hello| in the terminal.\\
+
+How to reopen my project? and start working on it again? Just open RStudio and reopen the \textit{project} from the drop-down menu and/or open directly from the folder it is located at. Projects by themselves are very usefu tools for structuring code since they are \textit{isolated} and they have handy features for bigger projects (\verb|F2| for function editing (just like Excel! and \verb|Ctrl + .| for the best search function out there (Press \verb|Alt+Shift+K|) to view them all).\\
+
+Now, click on the \verb|pckname.Rproj| file, this allows us to work on the project options. Besides all the R stuff here is where I would integrate it with GitHub:
+\begin{verbatim}
+	git init pck.dir
+	cd pck.dir
+	git status
+	git commit - m "First commit of First pck <3"
+	git add remote PaoloLuciano...
+	git push remote master
+\end{verbatim}
+
+\section*{What's a package and what does it contain?}
+A package (in its source form) is a collection of files and directories with a very defined structure and documentation. The most relevant components of it are (in somewhat order of importance):
+
+\begin{itemize}
+	\item \textbf{R Code}: specifically, a directory where all the functions live. 
+	\item \textbf{Package Metadata}: a file named \verb|DESCRIPTION| that describes what is your package and what's required for it to work. It also contains the license and other boring stuff. 
+	\item \textbf{Documentation}: all the files that allow others (and future you) to understand what is actually happening and what does every function does. They should be as detailed as possible. This might be the most boring part of package development but \verb|reoxygen2| makes it a walk in the park. Specially if you already know how to write \LaTeX
+	\item \textbf{Vignettes}: Think of this as as the home page  Wikipedia for your package. It might even provide examples on how to use everything from the package.
+	\item \textbf{Tests}: why not write automated test that ensures the package works as expected as you keep on developing it (or that others don't break your precious work). 
+	\item \textbf{Namespace}: it ensures that if you creatively name your function \verb|plot| it doesn't break all other \verb|plot| functions out there. 
+	\item \textbf{Compiled Code}: want speed? Here you can put some more low level \verb|C++|
+\end{itemize}
+
+\subsubsection*{What a package is is not}
+This is important: \textbf{a collection of scripts}. Everything that you code, \textbf{must} be a function, or should be something that creates objects (S3 and S4 classes). If you want to make scripts do theme somewhere else. As with almost all software, the code and structure we can edit and work on is very different than what a computer can actually use. So there's a certain \textit{lifecycle} that packages go trough. Those are: 
+
+\begin{enumerate}
+	\item \textbf{Source}: a package on it's most raw form. It's just the directory we've been working with.
+	\item \textbf{Bundled}: package compressed into a single file they use extension \verb|.tar.gz|. It's not very useful to be honest. If a package can be built, then it its good to go (at least the technical parts your code can be shit and still be able to build it).
+	\item \textbf{Binary}: the package you can actually distribute. It's a single file but quite different than a bundled one, a bundled package is platform (OS) specific.
+	\item \textbf{Installed}: binary package that has been decompressed into a library. When you run \verb|install.packages(...)| you're usually downloading packages from \verb|CRAN|, installing them and turning them into a library of functions that can be \textit{loaded} into \R. 
+	\item \textbf{In-memory}: The package in it's most \textit{pure} form where you can actually use it. A package must be loaded into memory and it's done using the traditional \verb|library(...)|  function.\footnote{It's different to use \texttt{load()} and \texttt{require}}
+\end{enumerate}
+
+There are actually quite a few ways to install and use a package. One that I really like is: \verb|devtools::install_github()| that automatically downloads a source package from Github, builds it and installs it. On a quick note, a library is different than a package in the sense that a library is simply a directory that contains installed packages. When developing a package, this distinction and further considerations regarding paths are really important and should be addressed in more detail. 
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=.75\textwidth]{package-files.png}
+\end{figure}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=.75\textwidth]{installation.png}
+\end{figure}
+
+\section*{Now what?}
+Now, now you code. You already know that part. However there are a few important details. First All code must go into the smartly named \verb|R\| sub-directory of your package. All good practice coding tips should be applied to this section, a few good practice tips:
+
+\begin{itemize}
+	\item Function names should be lowercase 
+	\item Don't use \_ for anything but S3 and S4 methods (OOP)
+	\item Space words and symbols
+	\item RStudio can autoformat stuff for you 
+	\item \verb|<-| is superior to \verb|=| for assignment.
+	\item Name files accordingly and comment the code (different than documenting it)
+\end{itemize}
+
+One of the main differences between a package and a the regular code (scripts) most of us are used to write (specially in a statistical language), is that, in a script, the code is run when loaded. In a package code is run when built, therefore, the package should only create objects. The reason is that a package is meant to be used multiple times and to be as flexible as possible. \textbf{Never run code at the top level of a package}, for example, never run \verb|library(...)| inside of a package (we will cover this next).
+
+\subsection*{Description file and integration with other packages}
+When developing a package, you need to think that other people are going to use it. The fundamental idea is to share the package even though if you only use it yourself, this mindset will help you become a better coder overall. One of the main building blocks of this mentality is the \verb|DESCRIPTION| file. This file is simply a text file (DCF extension) that contains all of the \textit{Metadata} of the package. You can view it's contents directly in the RStudio interface or in any text editor of choice. It contains details about the package and your contact information for when you get famous.\\
+
+However, when building simple packages, the most important role of the \verb|DESCRIPTION| file is to make it play well with other packages. It clearly states which other packages need to be loaded with you package for it to work properly. To add packages you need to run:
+
+\begin{verbatim}
+	usethis::use_package("ggplot2")
+\end{verbatim}
+ 
+And when adding functions from other packages to yours, always specify from which package is each function. For example:
+
+\begin{verbatim}
+simple.plot <- function(n){
+	data <- data.frame(x = rnorm(n,1,2), y = runif(n,5,6))
+	ggplot2::ggplot(data = data, aes(x = x, y = y)) + geom_point() +
+		geom_smooth(method = "loess")
+}
+\end{verbatim}
+
+The \verb|::| operator ensures that R searches for the function on the correct \verb|NAMESPACE|. This has to do with the \textit{lexical scoping} \R is so good at. There can be several issues with the path functions and variables are referring to and this will ensure they play along nicely. The \verb|NAMESPACE| file in your package also contains information about what objects are actually declared inside of your package. This can get tricky, but for now, we will allow \verb|devtools| to handle that, when a package is built, the namespace is automatically updated. However, trying to run this function will not work due to problems with the absolute \verb|NAMESPACE|. We will fix this by documenting our functions!
+
+\subsection*{Documenting your package, the right way to do it}
+Documenting you code is important, and \R can make the task simple, efficient and helpful. This, is with the help of a \verb|roxygen2| package (also developed by H. Wickham). The options we changed at the beginning help us integrate this package into out workstream (and not break things). For now we will delete a couple of files, this because \verb|reoxygen2| will not overwrite the \verb|NAMESPACE| file and the original \verb|.Rd| files but will create new ones that allow us to work seamlessly. The \verb|roxygen2| package first defines a clear structure for commenting functions that's built into RStudio. A good way to quickly document functions is to use the shortcut: \verb|Ctrl + Alt + Shift + R| to build a documentation skeleton for your function. \\
+
+All documentation files created by \verb|roxygen2| have the extension \verb|.Rd| and are documents that somewhat resemble a \LaTeX file. They will be stored on the \verb|man/| directory. However, RStudio can render those files in HTTP and present them on a readable way; the useful \verb|?func| fetches the documentation page for that specific package or function and presents it on the console. That's why \verb|CRAN| help documentation looks so shitty (but not DataCamp) .\\
+
+All \textit{comments} in \verb|roxygen2| start with a \verb|#'|. All lines before a function are called a block. Each block has \textbf{tags} attached to it that stat with a \verb|@|. However, before using tags, there are three special lines (paragraphs) that \verb|roxygen| parses automatically and have speciall meanings. They are: 
+
+\begin{itemize}
+	\item \textbf{Title}: first. line of the documentation. 
+	\item \textbf{Description}: Paragraph explaining what the function does.
+	\item \textbf{Details}: self explanatory
+\end{itemize}
+
+There are a lot of tags and they, will tell \verb|roxygen2| what are you trying to specify. Roughly speaking the ones you'll use the most are:
+
+\begin{itemize}
+	\item \verb|@params| Created automatically for every input/or parameter on your function  where you specify the data type, representation, etc. All parameters should be documented
+	\item	\verb|@inheritParams| to inherit parameters for other functions (do repeat yourself)
+	\item \verb|@examples| To teach the user how to call the function
+	\item \verb|@export| To put the function in the \verb|NAMESPACE| so that it can be used by others (think of this as public and private functions)
+	\item \verb|@import| To import from other packages
+	\item \verb|@return| To specify the output of the function
+	\item \verb|@seealso| For further resources like web pages
+	\item \verb|@family| For grouping functions. 
+\end{itemize}
+
+So now we can fix the \verb|NAMESPACE| from the package by adding the line \verb|@import ggplot2| to our previous function. Note that there are other types of more general types of documentation such as \textit{vignettes} and the \verb|DESCRIPTION| file itself. You can add a lot of other fancy Latexy stuff to the documentation like links, footnotes, code, lists and math so feel free to be as explicit as you can.  
+
+\section*{Conclusion}
+And that's pretty much it. You can now have working packages within minutes and ones that actually enable you to focus on what's most important, the content of the package. 
+
+A quick summary of all the steps (for this version of R, RStudio, devtools, etc.) is:
+
+\begin{enumerate}	
+	\item Open RStudio and click on \textit{New Project}. 
+	\item Name your package and select where will it live.
+	\item Change options for documenting with \verb|roxygen2|
+	\item Delete \verb|\man| directory and \verb|NAMESPACE| file
+	\item Edit details of \verb|DESCRIPTION| file
+	\item Code first function
+	\item \verb|Ctrl + Alt + Shift + R| document function
+	\item \verb|Ctrl + Shift + D| to build
+	\item Initialize Github
+	\item Repeat until something breaks 
+\end{enumerate}
+
+\end{document}
